@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Cajas</title>
+    <link rel="stylesheet" href="paginaPrincipal.css">
+</head>
+<body>
+
+    <div class="contenedor">
+        <form id="inventario-form">
+            <label>Nombre:</label>
+            <input type="text" id="nombre" required>
+          
+            <label>Caja:</label>
+            <input type="number" id="caja">
+          
+            <label>Carpetas:</label>
+            <input type="number" id="carpetas">
+          
+            <label>Fecha:</label>
+            <input type="date" id="fecha">
+          
+            <label>Solo Búsqueda:</label>
+            <input type="checkbox" id="soloBusqueda" onchange="ejecucionToggle()">
+
+            <input type="submit" value="Enviar" class="btn-submit">
+        </form>
+
+        <div class="acciones">
+            <button id="calcular-produccion">Calcular Producción</button>
+        </div>
+
+        <ul id="registros"></ul>
+        <div id="produccion"></div>
+    </div>
+
+    <script src="paginaPrincipal.js"></script>
+</body>
+</html>

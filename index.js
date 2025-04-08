@@ -1,164 +1,121 @@
 document.addEventListener("DOMContentLoaded", function () {
-    cargarDatosGuardados();
-});
+    const form = document.querySelector("form");
+    const mostrarInfo = document.getElementById("mostrarInfo");
+    const exportarExcel = document.getElementById("exportarExcel");
 
-function guardarDatos(nombre, caja, carpetas) {
-    let fechaInput = document.getElementById("fecha").value;
-    let fecha = fechaInput ? new Date(fechaInput).toLocaleDateString() : new Date().toLocaleDateString();
-    let array = [nombre, caja, carpetas, fecha];
-    creacionPlantillaElementos(array);
-}
+    let registros = JSON.parse(localStorage.getItem("registros")) || [];
 
-function creacionPlantillaElementos(elementosAlmacenados) {
-    let info = document.getElementById("mostrarInfo");
-
-    let div = document.createElement("div");
-    div.classList.add("registro", "list-group-item");
-
-    div.innerHTML = `
-        <span><strong>Nombre:</strong> ${elementosAlmacenados[0]}</span>
-        <span><strong>Cajas:</strong> ${elementosAlmacenados[1]}</span>
-        <span><strong>Carpetas:</strong> ${elementosAlmacenados[2]}</span>
-        <span><strong>Fecha:</strong> ${elementosAlmacenados[3]}</span>
-        <button class="btn btn-success btn-sm botonElemento">Guardar</button>
-        <button class="btn btn-danger btn-sm botonElementoEliminar">Eliminar</button>
-    `;
-
-    info.appendChild(div);
-}
-
-function eliminarDatos(e) {
-    let registro = e.target.closest(".registro");
-    if (!registro) return;
-
-    let nombre = registro.querySelector("span:nth-child(1)").textContent.replace("Nombre: ", "").trim();
-    let cajas = registro.querySelector("span:nth-child(2)").textContent.replace("Cajas: ", "").trim();
-    let carpetas = registro.querySelector("span:nth-child(3)").textContent.replace("Carpetas: ", "").trim();
-    let fecha = registro.querySelector("span:nth-child(4)").textContent.replace("Fecha: ", "").trim();
-
-    registro.remove();
-
-    let datosPrevios = JSON.parse(localStorage.getItem("datosGuardados")) || [];
-    let datosActualizados = datosPrevios.filter(
-        (dato) => !(dato.nombre === nombre && dato.cajas === cajas && dato.carpetas === carpetas && dato.fecha === fecha)
-    );
-
-    localStorage.setItem("datosGuardados", JSON.stringify(datosActualizados));
-    mostrarMensaje("Registro eliminado correctamente", "danger");
-}
-
-function guardarDatosLocal(e) {
-    let registro = e.target.closest(".registro");
-
-    let nombre = registro.querySelector("span:nth-child(1)").textContent.replace("Nombre: ", "").trim();
-    let cajas = registro.querySelector("span:nth-child(2)").textContent.replace("Cajas: ", "").trim();
-    let carpetas = registro.querySelector("span:nth-child(3)").textContent.replace("Carpetas: ", "").trim();
-    let fecha = registro.querySelector("span:nth-child(4)").textContent.replace("Fecha: ", "").trim();
-
-    let nuevoDato = { nombre, cajas, carpetas, fecha };
-
-    let datosPrevios = JSON.parse(localStorage.getItem("datosGuardados")) || [];
-    datosPrevios.push(nuevoDato);
-    localStorage.setItem("datosGuardados", JSON.stringify(datosPrevios));
-
-    mostrarMensaje("Datos guardados correctamente", "success");
-}
-
-function mostrarMensaje(mensaje, tipo) {
-    let alerta = document.createElement("div");
-    alerta.classList.add("alert", `alert-${tipo}`, "mt-2", "text-center");
-    alerta.textContent = mensaje;
-
-    document.getElementById("mostrarInfo").prepend(alerta);
-
-    setTimeout(() => {
-        alerta.remove();
-    }, 3000);
-}
-
-function cargarDatosGuardados() {
-    let datosString = localStorage.getItem("datosGuardados");
-    let datosPrevios = [];
-
-    try {
-        datosPrevios = JSON.parse(datosString);
-        if (!Array.isArray(datosPrevios)) {
-            datosPrevios = [];
-        }
-    } catch (error) {
-        datosPrevios = [];
+    function guardarLocal() {
+        localStorage.setItem("registros", JSON.stringify(registros));
     }
 
-    datosPrevios.forEach((dato) => {
-        creacionPlantillaElementos([dato.nombre, dato.cajas, dato.carpetas, dato.fecha]);
-    });
-}
-
-document.getElementById("enviado").addEventListener("click", (e) => {
-    e.preventDefault();
-    guardarDatos(
-        document.getElementById("nombrePersona").value,
-        document.getElementById("totalCajas").value,
-        document.getElementById("totalCarpetas").value
-    );
-});
-
-document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("botonElemento")) {
-        guardarDatosLocal(e);
-    } else if (e.target.classList.contains("botonElementoEliminar")) {
-        eliminarDatos(e);
-    }
-});
-
-document.getElementById("exportarExcel").addEventListener("click", () => {
-    let datos = JSON.parse(localStorage.getItem("datosGuardados")) || [];
-
-    if (datos.length === 0) {
-        alert("No hay datos para exportar.");
-        return;
+    function eliminarRegistro(index) {
+        registros.splice(index, 1);
+        guardarLocal();
+        mostrarRegistros();
     }
 
-    // Hoja 1: Registros
-    let registros = [["Nombre", "Cajas", "Carpetas", "Fecha"]];
-    datos.forEach(dato => {
-        registros.push([dato.nombre, dato.cajas, dato.carpetas, dato.fecha]);
-    });
+    function mostrarRegistros() {
+        mostrarInfo.innerHTML = "";
 
-    // Hoja 2: Resumen por persona y mes
-    let resumenPorPersonaMes = {};
+        const registrosPorPersona = {};
 
-    datos.forEach(dato => {
-        let fecha = new Date(dato.fecha);
-        let mes = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
-        let clave = `${dato.nombre}-${mes}`;
+        registros.forEach(({ nombre, cajas, carpetas, fecha }, index) => {
+            if (!registrosPorPersona[nombre]) {
+                registrosPorPersona[nombre] = [];
+            }
+            registrosPorPersona[nombre].push({ cajas, carpetas, fecha, index });
+        });
 
-        if (!resumenPorPersonaMes[clave]) {
-            resumenPorPersonaMes[clave] = {
-                nombre: dato.nombre,
-                mes: mes,
-                cajas: 0,
-                carpetas: 0
-            };
+        for (const nombre in registrosPorPersona) {
+            const div = document.createElement("div");
+            div.classList.add("persona");
+
+            const titulo = document.createElement("h5");
+            titulo.textContent = nombre;
+            div.appendChild(titulo);
+
+            const lista = document.createElement("ul");
+            registrosPorPersona[nombre].forEach(({ cajas, carpetas, fecha, index }) => {
+                const item = document.createElement("li");
+
+                item.innerHTML = `📦 Cajas: ${cajas} | 📁 Carpetas: ${carpetas} | 📅 Fecha: ${fecha || "No indicada"} 
+                    <button class="eliminar" data-index="${index}">🗑️</button>`;
+
+                lista.appendChild(item);
+            });
+
+            div.appendChild(lista);
+            mostrarInfo.appendChild(div);
         }
 
-        resumenPorPersonaMes[clave].cajas += parseInt(dato.cajas);
-        resumenPorPersonaMes[clave].carpetas += parseInt(dato.carpetas);
-    });
-
-    let resumenExcel = [["Nombre", "Mes", "Total Cajas", "Total Carpetas"]];
-    for (let clave in resumenPorPersonaMes) {
-        let persona = resumenPorPersonaMes[clave];
-        resumenExcel.push([persona.nombre, persona.mes, persona.cajas, persona.carpetas]);
+        document.querySelectorAll(".eliminar").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const index = btn.getAttribute("data-index");
+                eliminarRegistro(index);
+            });
+        });
     }
 
-    // Crear Excel
-    let wb = XLSX.utils.book_new();
-    let ws1 = XLSX.utils.aoa_to_sheet(registros);
-    let ws2 = XLSX.utils.aoa_to_sheet(resumenExcel);
+    form.addEventListener("submit", function (e) {
+        e.preventDefault();
 
-    XLSX.utils.book_append_sheet(wb, ws1, "Registros");
-    XLSX.utils.book_append_sheet(wb, ws2, "Resumen x Persona");
+        const nombre = document.getElementById("nombrePersona").value.trim();
+        const cajas = parseInt(document.getElementById("totalCajas").value);
+        const carpetas = parseInt(document.getElementById("totalCarpetas").value);
+        const fecha = document.getElementById("fecha").value;
 
-    XLSX.writeFile(wb, "InventarioPorPersona.xlsx");
+        if (!nombre || isNaN(cajas) || isNaN(carpetas)) {
+            alert("Por favor completa todos los campos requeridos.");
+            return;
+        }
+
+        registros.push({ nombre, cajas, carpetas, fecha });
+        guardarLocal();
+        mostrarRegistros();
+        form.reset();
+    });
+
+    exportarExcel.addEventListener("click", function () {
+        const wb = XLSX.utils.book_new();
+
+        // Hoja 1: Inventario
+        const hoja1 = XLSX.utils.json_to_sheet(registros);
+        XLSX.utils.book_append_sheet(wb, hoja1, "Inventario");
+
+        // Hoja 2: Totales por Persona por Mes
+        const totalesPorPersonaMes = {};
+        registros.forEach(({ nombre, cajas, carpetas, fecha }) => {
+            if (!fecha) return;
+            const mes = fecha.substring(0, 7); // yyyy-mm
+            const clave = `${nombre}_${mes}`;
+            if (!totalesPorPersonaMes[clave]) {
+                totalesPorPersonaMes[clave] = { nombre, mes, cajas: 0, carpetas: 0 };
+            }
+            totalesPorPersonaMes[clave].cajas += cajas;
+            totalesPorPersonaMes[clave].carpetas += carpetas;
+        });
+
+        const hoja2 = XLSX.utils.json_to_sheet(Object.values(totalesPorPersonaMes));
+        XLSX.utils.book_append_sheet(wb, hoja2, "Totales por Persona x Mes");
+
+        // Hoja 3: Totales por Mes General
+        const totalesMensuales = {};
+        registros.forEach(({ cajas, carpetas, fecha }) => {
+            if (!fecha) return;
+            const mes = fecha.substring(0, 7); // yyyy-mm
+            if (!totalesMensuales[mes]) {
+                totalesMensuales[mes] = { mes, cajas: 0, carpetas: 0 };
+            }
+            totalesMensuales[mes].cajas += cajas;
+            totalesMensuales[mes].carpetas += carpetas;
+        });
+
+        const hoja3 = XLSX.utils.json_to_sheet(Object.values(totalesMensuales));
+        XLSX.utils.book_append_sheet(wb, hoja3, "Totales Mensuales");
+
+        XLSX.writeFile(wb, "inventario.xlsx");
+    });
+
+    mostrarRegistros();
 });
